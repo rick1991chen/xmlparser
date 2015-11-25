@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -330,19 +331,57 @@ public class XmlParserDom {
         stringBuffer.append(">");
     }
 
+    /**
+     * 根据提供的参数返回数据
+     *
+     * @param requestDataName 请求的数据的名称,限制为根节点下第一级节点
+     * @return 搭载数据的Map
+     * @version 1.0
+     * @createTime 2015/11/25  17:41
+     * @updateTime 2015/11/25  17:41
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     */
+    public static Map requestData(String requestDataName, File file) {
 
-/*    private static void printMap(Map map){
-        for(Iterator it = map.entrySet().iterator();it.hasNext();){
-    		Map.Entry entry = (Entry) it.next();
-    		
-    		String a = (String) entry.getKey();
-    		String b = (String) entry.getValue();
-    		
-    		System.out.println("map : key="+a+",value="+b);
-    		
-    	}
-    	
-    }*/
+        Map map = null;
+        try {
+            map = resolveXMLFromStream(new FileInputStream(file));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        if (map == null) {
+            return null;
+        }
+
+        //迭代查找对应的元素
+        Iterator iterator = map.entrySet().iterator();
+        Object object = null;
+        while (iterator.hasNext()) {
+            Map.Entry entry = (Entry) iterator.next();
+
+            String key = (String) entry.getKey();
+
+            if (requestDataName.equals(key)) {
+                object = entry.getValue();
+
+                break;
+            }
+        }
+
+        if (object instanceof Map) {
+            map = (Map) object;
+            return map;
+        } else if (object instanceof String) {
+            Map extraMap = new HashMap();
+            map.put(requestDataName, (String) object);
+        }
+        return map; //所有元素总集合
+    }
+
+
 }
 
 
