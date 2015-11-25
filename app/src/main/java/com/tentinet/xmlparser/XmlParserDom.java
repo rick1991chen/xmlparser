@@ -12,12 +12,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -26,9 +22,9 @@ import javax.xml.parsers.ParserConfigurationException;
 
 /**
  * @author rick
- * @Description 使用dom方式解析xml文档
+ * @Description 使用dom方式解析xml文档, 并暴露公共方法获取数据
  * @date 2015/11/23
- * @Copyright: Copyright (c)${year} Shenzhen Tentinet Technology Co., Ltd. Inc. All rights reserved.
+ * @Copyright: Copyright (c)2015 Shenzhen Tentinet Technology Co., Ltd. Inc. All rights reserved.
  */
 public class XmlParserDom {
     /**
@@ -37,7 +33,7 @@ public class XmlParserDom {
     private static Map<String, Map> rootMap = new LinkedHashMap<>();
 
     /**
-     * 静态方法完成xml文件的解析
+     * xml文件的解析
      *
      * @version 1.0
      * @createTime 2015/11/23  9:51
@@ -45,8 +41,11 @@ public class XmlParserDom {
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
+     *
+     * @param is xml文档文件转换的输入流
+     * @return 包含了整个文档信息的Map集合
      */
-    public static Map<String, Map> readFromSource(InputStream is) {
+    public static Map<String, Map> resolveXMLFromStream(InputStream is) {
         //获取文档创建者工厂
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 
@@ -79,7 +78,6 @@ public class XmlParserDom {
             return rootMap;
         }
 
-        //       System.out.println("primaryNodes.getLength(): "+primaryNodes.getLength());
         //遍历一级子节点,每次循环填充一个list集合或者map集合
         for (int i = 0; i < primaryNodes.getLength(); i++) {
             Node primaryNode = primaryNodes.item(i);            //获取一级子节点
@@ -118,10 +116,12 @@ public class XmlParserDom {
                                     addAttrMap(thirdlyNodesMap, secondaryNode, secondaryNodeName);
                                 }
 
+                                //循环保存简单节点
                                 for (int k = 0; k < thirdlyNodes.getLength(); k++) {
                                     Node thirdlyNode = thirdlyNodes.item(k);
 
                                     if (thirdlyNode != null && thirdlyNode.getNodeType() == Node.ELEMENT_NODE) {
+
                                         String thirdlyNodeName = thirdlyNode.getNodeName();
                                         String thirdlyNodeText = thirdlyNode.getTextContent();
                                         thirdlyNodesMap.put(thirdlyNodeName, thirdlyNodeText);
@@ -175,7 +175,7 @@ public class XmlParserDom {
 
 
     /**
-     * 将一个装载XML文件的集合中的数据导出为XML文件
+     * 将一个装载XML文件导出为String
      *
      * @version 1.0
      * @createTime 2015/11/24  11:24
@@ -183,8 +183,11 @@ public class XmlParserDom {
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
+     *
+     * @param file XML文件
+     * @return XML文件中的字符串
      */
-    public static String writeXMLToFile(File file) {
+    public static String XMLFileToString(File file) {
 
         InputStream is = null;
         try {
@@ -194,17 +197,21 @@ public class XmlParserDom {
             e.printStackTrace();
         }
 
+        //获取用来拼接xml文件的StringBuffer
         StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>"); //文件头
 
-        Map<String, Map> map = XmlParserDom.readFromSource(is); //root-->student
+        //获取文档Map,单键值对,键为根节点名,值为根节点中的内容
+        Map<String, Map> map = XmlParserDom.resolveXMLFromStream(is);
 
         if (map == null) {
             throw new NullPointerException("流数据错误,无法读取");
         }
 
         Iterator rootIt = map.entrySet().iterator();
-        stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-        while (rootIt.hasNext()) { //第一轮遍历,获取根节点名称及根节点下的节点
+
+        //第一轮遍历,获取根节点名称及根节点
+        while (rootIt.hasNext()) {
             Map.Entry rootEntry = (Map.Entry) rootIt.next();
 
             String rootName = (String) rootEntry.getKey();
@@ -214,13 +221,14 @@ public class XmlParserDom {
 
             Iterator primaryNodesIter = primaryNodesMap.entrySet().iterator();
 
-            while (primaryNodesIter.hasNext()) { //遍历primaryMap,value为子节点集合
+            //遍历primaryMap,value为子节点集合
+            while (primaryNodesIter.hasNext()) {
 
                 Map.Entry primaryEntry = (Map.Entry) primaryNodesIter.next();
 
                 String primaryNodeName = (String) primaryEntry.getKey();
 
-                stringBuffer.append("<" + primaryNodeName);//+">"
+                stringBuffer.append("<" + primaryNodeName);
 
                 Map secondaryMap = (Map) primaryEntry.getValue();
 
@@ -237,86 +245,38 @@ public class XmlParserDom {
 
                     if(isAttribute) {
 
-                        appendAttrsToSb(stringBuffer,secondaryEntry);
+                        appendAttrsToStringBuffer(stringBuffer, (Map) secondaryEntry.getValue());
+
                     } else {
 
                         String secondaryNodeText = (String) secondaryEntry.getValue();
 
                         stringBuffer.append("<" + secondaryNodeName + ">" + secondaryNodeText + "</" + secondaryNodeName + ">");
 
-//                        Iterator thirdlyIter = thirdlyMap.entrySet().iterator();
-//                        while (thirdlyIter.hasNext()){
-//
-//                            Map.Entry thirdlyEntry = (Map.Entry) thirdlyIter.next();
-//
-//                            String thirdlyNodeName = (String) thirdlyEntry.getKey();
-//
-//                            String thirdlyNodeText = (String) thirdlyEntry.getValue();
-//
-//                            stringBuffer.append("<"+thirdlyNodeName + ">" + thirdlyNodeText + "</"+thirdlyNodeName +">");
-//                        }
-//
-// stringBuffer.append("</" + secondaryNodeName + ">");
-
                     }
                 }
-
                 stringBuffer.append("</" + primaryNodeName + ">");
-
-
-//                String stuName = (String) entry1.getKey();
-//
-//                boolean isAttribute = stuName.endsWith("_$attrs");
-//
-//                if(isAttribute) {
-//                   // stringBuffer.append("<" + stuName.substring(0, stuName.lastIndexOf("_")));// + ">"
-//                } else {
-//                    stringBuffer.append("<" + stuName);
-//                }
-//
-//                if(isAttribute){
-//                    Map stuAttr = (Map) entry1.getValue(); //节点属性map
-//
-//                    Iterator stuAttrIt = stuAttr.entrySet().iterator();
-//
-//                    while(stuAttrIt.hasNext()){ //添加属性
-//                        Map.Entry attrEntry = (Map.Entry) stuAttrIt.next();
-//
-//                        String attrName = (String) attrEntry.getKey();
-//                        String attrText = (String) attrEntry.getValue();
-//                      //  System.out.println("属性:" + attrName + "=" + attrText);
-//                        stringBuffer.append(" " + attrName + "=" + "\"" + attrText + "\""); //// TODO: 2015/11/25
-//                    }
-//                   // stringBuffer.append(">");
-//                } else {
-//                    stringBuffer.append(">");
-//
-//                    Map subNodesMap = (Map) entry1.getValue(); //子节点map
-//
-//                    Iterator subNodesAttrIt = subNodesMap.entrySet().iterator();
-//
-//                    while(subNodesAttrIt.hasNext()){
-//                        Map.Entry attrEntry = (Map.Entry) subNodesAttrIt.next();
-//
-//                        String attrName = (String) attrEntry.getKey();
-//                        String attrText = (String) attrEntry.getValue();
-//                        stringBuffer.append("<" + attrName + ">" + attrText + "</" + attrName + ">");
-//
-//                    }
-//                    stringBuffer.append("</" + stuName + ">");
-//                }
-////// TODO: 2015/11/25 or should be append here : stringBuffer.append("</" + stuName + ">");
-
 
             }
             stringBuffer.append("</" + rootName + ">");
         }
 
-
         return stringBuffer.toString();
     }
 
-    private static void appendNodesToSb(StringBuffer stringBuffer, Map.Entry entry) {
+
+    /**
+     * 将节点集合中的普通节点添加进stringbuffer
+     *
+     * @param stringBuffer 添加字符串容器
+     * @version 1.0
+     * @createTime 2015/11/25  15:40
+     * @updateTime 2015/11/25  15:40
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     */
+    private static void appendNodesToStringBuffer(StringBuffer stringBuffer, Map.Entry entry) {
         Map nodesMap = (Map) entry.getValue();
 
         Iterator Iter = nodesMap.entrySet().iterator();
@@ -332,8 +292,20 @@ public class XmlParserDom {
         }
     }
 
-    private static void appendAttrsToSb(StringBuffer stringBuffer, Map.Entry entry) {
-        Map nodeAttrMap = (Map) entry.getValue();
+    /**
+     * 将节点属性的map中的键值添加到StringBuffer中
+     *
+     * @version 1.0
+     * @createTime 2015/11/25  15:23
+     * @updateTime 2015/11/25  15:23
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     *
+     * @param stringBuffer 存数据的sb
+     * @param nodeAttrMap 保存节点属性的map集合
+     */
+    private static void appendAttrsToStringBuffer(StringBuffer stringBuffer, Map nodeAttrMap) {
         //添加属性
         Iterator attrIter = nodeAttrMap.entrySet().iterator();
         while (attrIter.hasNext()) {
@@ -342,7 +314,6 @@ public class XmlParserDom {
             String attrValue = (String) attrs.getValue();
             stringBuffer.append(" " + attrName + "=" + "\"" + attrValue + "\"");
         }
-
         stringBuffer.append(">");
     }
 
