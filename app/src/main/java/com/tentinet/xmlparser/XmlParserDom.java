@@ -1,27 +1,24 @@
 package com.tentinet.xmlparser;
 
-import android.util.Log;
-import android.util.Xml;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import org.xmlpull.v1.XmlPullParser;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
 
 /**
  * @author rick
@@ -31,13 +28,9 @@ import javax.xml.parsers.SAXParser;
  */
 public class XmlParserDom {
     /**
-     * 用来存放解析结果的list
+     * 用来存放解析结果的Map
      */
-    private static List sList = new ArrayList<>();
-    /**
-     * 用于打印log日志的tag
-     */
-    private static final String TAG = XmlParserDom.class.getSimpleName();
+    private static Map<String,Map> rootMap = new HashMap<>();
 
     /**
      * 静态方法完成xml文件的解析
@@ -49,13 +42,13 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static List<Map> readFromSource(InputStream is) {
+    public static Map<String,Map> readFromSource(InputStream is) {
         //获取文档创建者工厂
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 
         Element root = null;
         try {
-        //获取文档生成的创建者
+            //获取文档生成的创建者
             DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
 
             //通过创建者读取整个文档返回文档对象
@@ -64,11 +57,7 @@ public class XmlParserDom {
             //解析文档对象,获取根节点
             root = document.getDocumentElement();
 
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (ParserConfigurationException | SAXException | IOException e) {
             e.printStackTrace();
         }
 
@@ -76,58 +65,115 @@ public class XmlParserDom {
             return null;
         }
 
+        Map<String,Map> primaryNodesMap = new HashMap<>();
+
         //根节点下,一级子节点集合
-        NodeList firstNodes = root.getChildNodes();
+        NodeList primaryNodes = root.getChildNodes();
+        rootMap.put(root.getNodeName(), primaryNodesMap); //root
 
-        if (firstNodes == null) { //空根节点,返回一个元素个数为0的list集合
-            return sList;
+        if (primaryNodes == null) { //空根节点,返回一个元素个数为0的map集合
+            return rootMap;
         }
-        Log.e(TAG, "从这里开始填充list集合");
-        Map firstMap = new HashMap<>();
+
+ //       System.out.println("primaryNodes.getLength(): "+primaryNodes.getLength());
         //遍历一级子节点,每次循环填充一个list集合或者map集合
-        for (int i = 0; i < firstNodes.getLength(); i++) {
-            //获取一级子节点对象
-            Node nodeFirst = firstNodes.item(i);
-            if (nodeFirst != null && nodeFirst.getNodeType() == Node.ELEMENT_NODE) { //node 不为空 并且节点类型为元素节点
+        for (int i = 0; i < primaryNodes.getLength(); i++) {
+            Node primaryNode = primaryNodes.item(i);            //获取一级子节点
 
-                if(nodeFirst.hasAttributes()){
-                //判断是否有"属性"存在,存在即在这个节点信息保存后,紧接保存一个以"_$attrs"结尾的字符串作为键,属性作为map的
+            if (primaryNode != null && primaryNode.getNodeType() == Node.ELEMENT_NODE) { //node 不为空 元素节点
+                //获取节点名 student
+                String primaryNodeName = primaryNode.getNodeName();
 
-                }
+                if (primaryNode.getChildNodes().getLength() > 1) { //有子节点
 
-                if(nodeFirst.getChildNodes().getLength() > 1) {//判断该节点是不是有子节点
-                    String nodeName = nodeFirst.getNodeName();
-                    //大于1说明是个有多个子节点的父节点,创建用于存放多个KV键值对map的list
-                    List firstList = new ArrayList();
-                    Map secondMap = new HashMap();
-                    NodeList secondNodes = nodeFirst.getChildNodes();
+                    Map <String,Object> secondaryNodesMap = new HashMap<>();
+                    NodeList secondaryNodes = primaryNode.getChildNodes();
 
-                    //遍历二级子节点
-                    for(int x = 0;x<secondNodes.getLength();x++){
-                        Node nodeSecond = secondNodes.item(x);
+                    for(int j = 0;j<secondaryNodes.getLength();j++) {
+                        Node secondaryNode = secondaryNodes.item(j);
 
+                        if(secondaryNode != null && secondaryNode.getNodeType() == Node.ELEMENT_NODE){
+                            //獲取二級節點的名字
+                            String secondaryNodeName = secondaryNode.getNodeName();
 
+                            if(secondaryNode.getChildNodes().getLength() > 1){ //有子節點
 
+                                Map<String,String> thirdlyNodesMap = new HashMap<>();
+                                NodeList thirdlyNodes = secondaryNode.getChildNodes();
 
+                                for(int k = 0;k<thirdlyNodes.getLength();k++){
+                                    Node thirdlyNode = thirdlyNodes.item(k);
 
+                                    if(thirdlyNode != null && thirdlyNode.getNodeType() == Node.ELEMENT_NODE){
+                                        String thirdlyNodeName = thirdlyNode.getNodeName();
+                                        String thirdlyNodeText = thirdlyNode.getTextContent();
+                                        thirdlyNodesMap.put(thirdlyNodeName,thirdlyNodeText);
+                                    }
+                                }
+                                secondaryNodesMap.put(secondaryNodeName,thirdlyNodesMap);
+                            } else { //無三級子節點
+                                //獲取二級節點中的文本內容
+                                String secondaryNodeText = secondaryNode.getTextContent();
 
-                        firstList.add(); //一级list装map
+                                secondaryNodesMap.put(secondaryNodeName, secondaryNodeText);
+                            }
+
+                            //二級節點的屬性添加
+                            if (secondaryNode.hasAttributes()) {
+                                Map<String, String> secondaryNodeAttrMap = new HashMap<>();
+                                //判断是否有"属性"存在,存在即在这个节点信息保存后,紧接保存一个以"_$attrs"结尾的字符串作为键,值为map的键值对
+
+                                NamedNodeMap attributes = primaryNode.getAttributes();
+                                for (int x = 0; x < attributes.getLength(); x++) {
+                                    secondaryNodeAttrMap.put(attributes.item(x).getNodeName(), attributes.item(x).getTextContent());
+                                }
+                                //保存属性,以key中独特的结尾确定
+                                secondaryNodesMap.put(secondaryNodeName + "_$attrs", secondaryNodeAttrMap); //map 泛型为<String,map>
+                            }
+                        }
                     }
-                    firstMap.put(nodeName,firstList);//map的泛型为<String,List>
+
+                    primaryNodesMap.put(primaryNodeName, secondaryNodesMap);
                 } else {
-                    //说明是单独的子标签,取出nodeName和nodeTextContent作为键值对存入map返回
-                    String nodeName = nodeFirst.getNodeName();
-                    String nodeText = nodeFirst.getTextContent();
-
-                    firstMap.put(nodeName,nodeText);//map的泛型为<String,String>
+                    //肯定有子節點
                 }
-            }
+                //解析完成一个节点后,判断该节点有没有属性,有则添加
+                if (primaryNode.hasAttributes()) {
+                    Map<String, String> primaryNodeAttrMap = new HashMap<>();
+                    //判断是否有"属性"存在,存在即在这个节点信息保存后,紧接保存一个以"_$attrs"结尾的字符串作为键,值为map的键值对
 
-            sList.add(firstMap);
+                    NamedNodeMap attributes = primaryNode.getAttributes();
+                    for (int x = 0; x < attributes.getLength(); x++) {
+                        primaryNodeAttrMap.put(attributes.item(x).getNodeName(), attributes.item(x).getTextContent());
+                    }
+                    //保存属性,以key中独特的结尾确定
+                    primaryNodesMap.put(primaryNodeName + "_$attrs", primaryNodeAttrMap); //map 泛型为<String,map>
+                }
+
+            }
         }
-        Log.e(TAG, "list集合填充完毕");
-        return sList;
+        return rootMap;
     }
+
+
+    /**
+     * 将一个装载XML文件的集合中的数据导出为XML文件
+     *
+     * @version 1.0
+     * @createTime 2015/11/24  11:24
+     * @updateTime 2015/11/24  11:24
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     *
+     */
+    public static File writeXMLToFile(List list){
+
+        return null;
+    }
+
+
+
 }
 
 
