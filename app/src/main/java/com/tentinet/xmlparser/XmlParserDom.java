@@ -8,18 +8,13 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -38,15 +33,11 @@ public class XmlParserDom {
     private static Map<String, Map> rootMap = new LinkedHashMap<>();
 
     /**
-     * 标签用来确认前一个读取的数据是不是属性map
-     */
-    private static boolean isPreAttribute = false;
-
-    /**
      * xml文件的解析
      *
      * @param XMLStr xml文件字符串
      * @return 包含了整个文档信息的Map集合
+     *
      * @version 1.0
      * @createTime 2015/11/23  9:51
      * @updateTime 2015/11/23  9:51
@@ -54,7 +45,7 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static Map<String, Map> resolveXMLFromStream(String XMLStr) {
+    public static Map<String, Map> resolveXMLFromSource(String XMLStr) {
 
         StringReader sr = new StringReader(XMLStr);
         InputSource is = new InputSource(sr);
@@ -93,7 +84,7 @@ public class XmlParserDom {
 
         //遍历一级子节点,每次循环填充一个map集合
         for (int i = 0; i < primaryNodes.getLength(); i++) {
-            Node primaryNode = primaryNodes.item(i);            //获取一级子节点
+            Node primaryNode = primaryNodes.item(i);
 
             if (primaryNode != null && primaryNode.getNodeType() == Node.ELEMENT_NODE) { //node 不为空 元素节点
                 //获取节点名 student
@@ -164,7 +155,7 @@ public class XmlParserDom {
     }
 
     /**
-     * 封装的方法,判断节点是否有属性,如果有,添加进子节点集合,以节点名 + "_$attrs"作为
+     * 封装的方法,如果节点有属性,添加进子节点集合,以节点名 + "_$attrs"作为键,属性封装的map集合作为值
      *
      * @param nodesMap 当前节点的子节点集合
      * @param node     当前节点
@@ -179,7 +170,6 @@ public class XmlParserDom {
     private static void addAttrMap(Map nodesMap, Node node, String nodeName) {
 
         Map<String, String> nodeAttrMap = new LinkedHashMap<>();
-        //判断是否有"属性"存在,存在即在这个节点信息保存后,紧接保存一个以"_$attrs"结尾的字符串作为键,值为map的键值对
 
         NamedNodeMap attributes = node.getAttributes();
 
@@ -192,9 +182,10 @@ public class XmlParserDom {
 
 
     /**
-     * 将一个装载XML文件导出为String,适配根节点下,一级子节点有属性或者为简单节点
+     * 将一个装载XML文件信息的Map导出为String,适配根节点下,一级子节点有属性或者为简单节点
+     * 或者带有二级子节点,无属性,为简单节点
      *
-     * @param XMLStr XML文档字符串
+     * @param map 封装了xml数据的map
      * @return XML文件中的字符串
      * @version 1.0
      * @createTime 2015/11/24  11:24
@@ -203,33 +194,27 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static String XMLToString(String XMLStr) {
+    public static String XMLToString(Map map) {
 
         //获取用来拼接xml文件的StringBuffer
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>"); //文件头
 
-        //获取文档Map,单键值对,键为根节点名,值为根节点中的内容
-        Map<String, Map> map = XmlParserDom.resolveXMLFromStream(XMLStr);
-
         if (map == null) {
-            throw new NullPointerException("流数据错误,无法读取");
+            throw new NullPointerException("传入的数据源为空");
         }
 
         Iterator rootIt = map.entrySet().iterator();
-
         //第一轮遍历,获取根节点名称及根节点
         while (rootIt.hasNext()) {
             Map.Entry rootEntry = (Map.Entry) rootIt.next();
 
             String rootName = (String) rootEntry.getKey();
-
             Map primaryNodesMap = (Map) rootEntry.getValue();
 
             stringBuffer.append("<" + rootName + ">");
 
             Iterator primaryNodesIter = primaryNodesMap.entrySet().iterator();
-
             //遍历primaryMap,value为子节点集合
             while (primaryNodesIter.hasNext()) {
                 Map.Entry primaryEntry = (Map.Entry) primaryNodesIter.next();
@@ -240,6 +225,7 @@ public class XmlParserDom {
 
                 Object object = primaryEntry.getValue();
 
+                //判断值的类型:1.Map 其中是子节点 2.String 其中包含的是当前节点文本
                 if (object instanceof Map) {
                     Map secondaryMap = (Map) object;
                     Iterator secondaryIter = secondaryMap.entrySet().iterator();
@@ -264,10 +250,10 @@ public class XmlParserDom {
                         if (isAttribute) {
                             continue;
                         }
+
                         if (!isAttribute) { //添加普通节点
                             String secondaryNodeText = (String) secondaryEntry.getValue();
                             stringBuffer.append("<" + secondaryNodeName + ">" + secondaryNodeText + "</" + secondaryNodeName + ">");
-
                         }
                     }
                 } else { //primary节点是基本节点
@@ -302,14 +288,10 @@ public class XmlParserDom {
     private static void appendNodesToStringBuffer(StringBuffer stringBuffer, Map nodesMap) {
 
         Iterator Iter = nodesMap.entrySet().iterator();
-
         while (Iter.hasNext()) {
-
             Map.Entry entry1 = (Map.Entry) Iter.next();
-
             String nodeName = (String) entry1.getKey();
             String nodeText = (String) entry1.getValue();
-
             stringBuffer.append("<" + nodeName + ">" + nodeText + "</" + nodeName + ">");
         }
     }
@@ -327,7 +309,7 @@ public class XmlParserDom {
      * @updateInfo
      */
     private static void appendAttrsToStringBuffer(StringBuffer stringBuffer, Map nodeAttrMap) {
-        //添加属性
+
         Iterator attrIter = nodeAttrMap.entrySet().iterator();
         while (attrIter.hasNext()) {
             Map.Entry attrs = (Map.Entry) attrIter.next();
@@ -351,6 +333,7 @@ public class XmlParserDom {
      */
     public static Map requestData(String requestDataName, Map map) {
 
+        Map resultMap = null;
         if (map == null) {
             return null;
         }
@@ -360,27 +343,33 @@ public class XmlParserDom {
         Object object = null;
         while (iterator.hasNext()) {
             Map.Entry entry = (Entry) iterator.next();
-
-            String key = (String) entry.getKey();
-
-            if (requestDataName.equals(key)) {
+            String key = (String) entry.getKey(); //root
+            if (requestDataName.equalsIgnoreCase(key)) {
                 object = entry.getValue();
-
                 break;
+            }
+            Map medialMap = (Map) entry.getValue();
+
+            Iterator it = medialMap.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry resultEntry = (Entry) it.next();
+                String request = (String) resultEntry.getKey();
+                if (requestDataName.equalsIgnoreCase(request)) {
+                    object = resultEntry.getValue();
+                    break;
+                }
             }
         }
 
         if (object instanceof Map) {
-            map = (Map) object;
+            resultMap = (Map) object;
             return map;
         } else if (object instanceof String) {
-            Map extraMap = new HashMap();
-            map.put(requestDataName, (String) object);
+            resultMap = new HashMap();
+            resultMap.put(requestDataName, (String) object);
         }
-        return map; //所有元素总集合
+        return resultMap; //所有元素总集合
     }
-
-
 }
 
 
