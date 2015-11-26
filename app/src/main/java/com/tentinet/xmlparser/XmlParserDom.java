@@ -251,8 +251,15 @@ public class XmlParserDom {
                             continue;
                         }
 
-                        if (!isAttribute) { //添加普通节点
-                            String secondaryNodeText = (String) secondaryEntry.getValue();
+                        Object secondaryEntryValue = secondaryEntry.getValue();
+                        if (secondaryEntryValue instanceof Map) {//二级子节点有子节点有属性
+
+                            System.out.println("二级子节点有子节点");
+
+
+                        } else {
+                            //二级节点无子节点
+                            String secondaryNodeText = (String) secondaryEntryValue;
                             stringBuffer.append("<" + secondaryNodeName + ">" + secondaryNodeText + "</" + secondaryNodeName + ">");
                         }
                     }
@@ -363,7 +370,7 @@ public class XmlParserDom {
 
         if (object instanceof Map) {
             resultMap = (Map) object;
-            return map;
+            return resultMap;
         } else if (object instanceof String) {
             resultMap = new HashMap();
             resultMap.put(requestDataName, (String) object);
