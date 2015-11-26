@@ -5,6 +5,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import java.io.File;
@@ -12,6 +13,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -35,11 +37,15 @@ public class XmlParserDom {
      */
     private static Map<String, Map> rootMap = new LinkedHashMap<>();
 
+    /**
+     * 标签用来确认前一个读取的数据是不是属性map
+     */
+    private static boolean isPreAttribute = false;
 
     /**
      * xml文件的解析
      *
-     * @param is xml文档文件转换的输入流
+     * @param XMLStr xml文件字符串
      * @return 包含了整个文档信息的Map集合
      * @version 1.0
      * @createTime 2015/11/23  9:51
@@ -48,7 +54,11 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static Map<String, Map> resolveXMLFromStream(InputStream is) {
+    public static Map<String, Map> resolveXMLFromStream(String XMLStr) {
+
+        StringReader sr = new StringReader(XMLStr);
+        InputSource is = new InputSource(sr);
+
         //获取文档创建者工厂
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 
@@ -167,7 +177,6 @@ public class XmlParserDom {
      * @updateInfo
      */
     private static void addAttrMap(Map nodesMap, Node node, String nodeName) {
-        //获取一个节点后,判断该节点有没有属性,有则添加等待
 
         Map<String, String> nodeAttrMap = new LinkedHashMap<>();
         //判断是否有"属性"存在,存在即在这个节点信息保存后,紧接保存一个以"_$attrs"结尾的字符串作为键,值为map的键值对
@@ -183,9 +192,9 @@ public class XmlParserDom {
 
 
     /**
-     * 将一个装载XML文件导出为String
+     * 将一个装载XML文件导出为String,适配根节点下,一级子节点有属性或者为简单节点
      *
-     * @param file XML文件
+     * @param XMLStr XML文档字符串
      * @return XML文件中的字符串
      * @version 1.0
      * @createTime 2015/11/24  11:24
@@ -194,21 +203,14 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static String XMLFileToString(File file) {
-        InputStream is = null;
-        try {
-            is = new FileInputStream(file);
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+    public static String XMLToString(String XMLStr) {
 
         //获取用来拼接xml文件的StringBuffer
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>"); //文件头
 
         //获取文档Map,单键值对,键为根节点名,值为根节点中的内容
-        Map<String, Map> map = XmlParserDom.resolveXMLFromStream(is);
+        Map<String, Map> map = XmlParserDom.resolveXMLFromStream(XMLStr);
 
         if (map == null) {
             throw new NullPointerException("流数据错误,无法读取");
@@ -230,53 +232,59 @@ public class XmlParserDom {
 
             //遍历primaryMap,value为子节点集合
             while (primaryNodesIter.hasNext()) {
-
                 Map.Entry primaryEntry = (Map.Entry) primaryNodesIter.next();
 
                 String primaryNodeName = (String) primaryEntry.getKey();
 
                 stringBuffer.append("<" + primaryNodeName);
 
-                //   Map secondaryMap = (Map) primaryEntry.getValue();
                 Object object = primaryEntry.getValue();
 
                 if (object instanceof Map) {
                     Map secondaryMap = (Map) object;
                     Iterator secondaryIter = secondaryMap.entrySet().iterator();
 
-                    while (secondaryIter.hasNext()) {
-
+                    while (secondaryIter.hasNext()) { //从map key值的结尾判断该map是否存放属性
                         Map.Entry secondaryEntry = (Map.Entry) secondaryIter.next();
-
                         String secondaryNodeName = (String) secondaryEntry.getKey();
-
-                        //判断value是属性还是子节点集合
                         boolean isAttribute = secondaryNodeName.endsWith("_$attrs");
 
-                        if (isAttribute) {
-
+                        if (isAttribute) { //添加属性
                             appendAttrsToStringBuffer(stringBuffer, (Map) secondaryEntry.getValue());
-
                         } else {
+                            break;
+                        }
+                    }
+                    stringBuffer.append(">");
 
+                    while (secondaryIter.hasNext()) { //从map key值的结尾判断该map是否存放属性
+                        Map.Entry secondaryEntry = (Map.Entry) secondaryIter.next();
+                        String secondaryNodeName = (String) secondaryEntry.getKey();
+                        boolean isAttribute = secondaryNodeName.endsWith("_$attrs");
+                        if (isAttribute) {
+                            continue;
+                        }
+                        if (!isAttribute) { //添加普通节点
                             String secondaryNodeText = (String) secondaryEntry.getValue();
-
                             stringBuffer.append("<" + secondaryNodeName + ">" + secondaryNodeText + "</" + secondaryNodeName + ">");
 
                         }
                     }
-                    //stringBuffer.append("</" + primaryNodeName + ">");
                 } else { //primary节点是基本节点
 
+                    stringBuffer.append(">");
+
                     String textContent = (String) object;
-                    stringBuffer.append(">" + textContent);
+                    stringBuffer.append(textContent);
 
                 }
                 stringBuffer.append("</" + primaryNodeName + ">");
             }
             stringBuffer.append("</" + rootName + ">");
+
         }
         return stringBuffer.toString();
+
     }
 
 
@@ -291,8 +299,7 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    private static void appendNodesToStringBuffer(StringBuffer stringBuffer, Map.Entry entry) {
-        Map nodesMap = (Map) entry.getValue();
+    private static void appendNodesToStringBuffer(StringBuffer stringBuffer, Map nodesMap) {
 
         Iterator Iter = nodesMap.entrySet().iterator();
 
@@ -328,7 +335,6 @@ public class XmlParserDom {
             String attrValue = (String) attrs.getValue();
             stringBuffer.append(" " + attrName + "=" + "\"" + attrValue + "\"");
         }
-        stringBuffer.append(">");
     }
 
     /**
@@ -343,14 +349,7 @@ public class XmlParserDom {
      * @updateAuthor
      * @updateInfo
      */
-    public static Map requestData(String requestDataName, File file) {
-
-        Map map = null;
-        try {
-            map = resolveXMLFromStream(new FileInputStream(file));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+    public static Map requestData(String requestDataName, Map map) {
 
         if (map == null) {
             return null;
