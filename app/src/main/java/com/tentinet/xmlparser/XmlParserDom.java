@@ -349,6 +349,7 @@ public class XmlParserDom {
         Iterator iterator = map.entrySet().iterator();
         Object object = null;
         while (iterator.hasNext()) {
+            //遍历根节点找一级节点
             Map.Entry entry = (Entry) iterator.next();
             String key = (String) entry.getKey(); //root
             if (requestDataName.equalsIgnoreCase(key)) {
@@ -357,13 +358,28 @@ public class XmlParserDom {
             }
             Map medialMap = (Map) entry.getValue();
 
-            Iterator it = medialMap.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry resultEntry = (Entry) it.next();
-                String request = (String) resultEntry.getKey();
+            Iterator medialIt = medialMap.entrySet().iterator();
+            while (medialIt.hasNext()) {
+                //遍历一级节点找二级节点
+                Map.Entry medialEntry = (Entry) medialIt.next();
+                String request = (String) medialEntry.getKey();
                 if (requestDataName.equalsIgnoreCase(request)) {
-                    object = resultEntry.getValue();
+                    object = medialEntry.getValue();
                     break;
+                }
+
+                //没找到继续找下一层
+                Map lastMap = (Map) medialEntry.getValue();
+
+                Iterator lastIter = lastMap.entrySet().iterator();
+                while (lastIter.hasNext()) {
+                    Map.Entry lastEntry = (Entry) lastIter.next();
+
+                    String lastKey = (String) lastEntry.getKey();
+                    if (requestDataName.equalsIgnoreCase(lastKey)) {
+                        object = lastEntry.getValue();
+                        break;
+                    }
                 }
             }
         }
