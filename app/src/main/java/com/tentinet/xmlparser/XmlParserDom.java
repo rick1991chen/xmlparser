@@ -369,17 +369,21 @@ public class XmlParserDom {
                 }
 
                 //没找到继续找下一层
-                Map lastMap = (Map) medialEntry.getValue();
+                if (medialEntry.getValue() instanceof Map) { //值是Map
+                    Map lastMap = (Map) medialEntry.getValue();
 
-                Iterator lastIter = lastMap.entrySet().iterator();
-                while (lastIter.hasNext()) {
-                    Map.Entry lastEntry = (Entry) lastIter.next();
+                    Iterator lastIter = lastMap.entrySet().iterator();
+                    while (lastIter.hasNext()) {
+                        Map.Entry lastEntry = (Entry) lastIter.next();
 
-                    String lastKey = (String) lastEntry.getKey();
-                    if (requestDataName.equalsIgnoreCase(lastKey)) {
-                        object = lastEntry.getValue();
-                        break;
+                        String lastKey = (String) lastEntry.getKey();
+                        if (requestDataName.equalsIgnoreCase(lastKey)) {
+                            object = lastEntry.getValue();
+                            break;
+                        }
                     }
+                } else if (medialEntry.getValue() instanceof String) { //值是String
+                    object = (String) medialEntry.getValue();
                 }
             }
         }
