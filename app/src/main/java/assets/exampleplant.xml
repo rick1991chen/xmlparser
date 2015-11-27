@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CATALOG>
+    <PLANT0>
+        <COMMON>Hepatica</COMMON>
+        <BOTANICAL>Hepatica americana</BOTANICAL>
+        <ZONE>4</ZONE>
+        <LIGHT>Mostly Shady</LIGHT>
+        <PRICE>$4.45</PRICE>
+        <AVAILABILITY>012699</AVAILABILITY>
+    </PLANT0>
+    <PLANT1>
+        <COMMON>Bloodroot</COMMON>
+        <BOTANICAL>Sanguinaria canadensis</BOTANICAL>
+        <ZONE>4</ZONE>
+        <LIGHT>Mostly Shady</LIGHT>
+        <PRICE>$2.44</PRICE>
+        <AVAILABILITY>031599</AVAILABILITY>
+    </PLANT1>
+    <PLANT2>
+        <COMMON>Columbine</COMMON>
+        <BOTANICAL>Aquilegia canadensis</BOTANICAL>
+        <ZONE>3</ZONE>
+        <LIGHT>Mostly Shady</LIGHT>
+        <PRICE>$9.37</PRICE>
+        <AVAILABILITY>030699</AVAILABILITY>
+    </PLANT2>
+    <PLANT3>
+        <COMMON>Marsh Marigold</COMMON>
+        <BOTANICAL>Caltha palustris</BOTANICAL>
+        <ZONE>4</ZONE>
+        <LIGHT>Mostly Sunny</LIGHT>
+        <PRICE>$6.81</PRICE>
+        <AVAILABILITY>051799</AVAILABILITY>
+    </PLANT3>
+</CATALOG>
