@@ -21,12 +21,14 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 /**
- * @author rick
+ * @author Rick
  * @Description 使用dom方式解析xml文档, 并暴露公共方法获取数据
  * @date 2015/11/23
- * @Copyright: Copyright (c)2015 Shenzhen Tentinet Technology Co., Ltd. Inc. All rights reserved.
+ * @Copyright: Copyright (c)2015 Shenzhen Tentinet Technology Co., Ltd. Inc. All
+ * rights reserved.
  */
 public class XmlParserDom {
+
     /**
      * 用来存放解析结果的Map
      */
@@ -37,121 +39,100 @@ public class XmlParserDom {
      *
      * @param XMLStr xml文件字符串
      * @return 包含了整个文档信息的Map集合
-     *
      * @version 1.0
-     * @createTime 2015/11/23  9:51
-     * @updateTime 2015/11/23  9:51
+     * @createTime 2015/11/23 9:51
+     * @updateTime 2015/11/23 9:51
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
      */
-    public static Map<String, Map> resolveXMLFromSource(String XMLStr) {
-
+    public static Map<String, Map> resolveXML(String XMLStr) {
         StringReader sr = new StringReader(XMLStr);
         InputSource is = new InputSource(sr);
 
-        //获取文档创建者工厂
-        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        // 获取文档创建者工厂
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory
+                .newInstance();
 
         Element root = null;
         try {
-            //获取文档生成的创建者
-            DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
+            // 获取文档生成的创建者
+            DocumentBuilder builder = documentBuilderFactory
+                    .newDocumentBuilder();
 
-            //通过创建者读取整个文档返回文档对象
+            // 通过创建者读取整个文档返回文档对象
             Document document = builder.parse(is);
 
-            //解析文档对象,获取根节点
+            // 解析文档对象,获取根节点
             root = document.getDocumentElement();
 
         } catch (ParserConfigurationException | SAXException | IOException e) {
             e.printStackTrace();
         }
 
-        if (root == null) { //空文件,返回null
+        if (root == null) { // 空文件,返回null
             return null;
         }
 
-        Map<String, Object> primaryNodesMap = new LinkedHashMap<>();
+        NodeList primaryChildNodes = root.getChildNodes();
 
-        //根节点下,一级子节点集合
-        NodeList primaryNodes = root.getChildNodes();
-        // rootMap.put(root.getNodeName(), primaryNodesMap); //root
+        Map primaryNodesMap = new LinkedHashMap();
 
-        if (primaryNodes == null) { //空根节点,返回一个元素个数为0的map集合
-            return rootMap;
-        }
+        for (int x = 0; x < primaryChildNodes.getLength(); x++) {// 遍历根节点下的子节点
 
-        //遍历一级子节点,每次循环填充一个map集合
-        for (int i = 0; i < primaryNodes.getLength(); i++) {
-            Node primaryNode = primaryNodes.item(i);
+            Node primaryNode = primaryChildNodes.item(x);
 
-            if (primaryNode != null && primaryNode.getNodeType() == Node.ELEMENT_NODE) { //node 不为空 元素节点
-                //获取节点名 student
-                String primaryNodeName = primaryNode.getNodeName();
-
-                boolean isPrimaryNodeHasAttr = primaryNode.hasAttributes();
-
-                if (primaryNode.getChildNodes().getLength() > 1) { //有子节点
-
-                    Map<String, Object> secondaryNodesMap = new LinkedHashMap<>();
-                    NodeList secondaryNodes = primaryNode.getChildNodes();
-
-                    /**在添加二级子节点前添加一级子节点的属性*/
-                    if (isPrimaryNodeHasAttr) { //在添加子节点集合前添加属性
-                        addAttrMap(secondaryNodesMap, primaryNode, primaryNodeName);
-                    }
-
-                    for (int j = 0; j < secondaryNodes.getLength(); j++) {
-                        Node secondaryNode = secondaryNodes.item(j);
-
-                        if (secondaryNode != null && secondaryNode.getNodeType() == Node.ELEMENT_NODE) {
-                            //獲取二級節點的名字
-                            String secondaryNodeName = secondaryNode.getNodeName();
-                            boolean isSecondaryNodeHasAttr = secondaryNode.hasAttributes();
-
-                            if (secondaryNode.getChildNodes().getLength() > 1) { //有子節點
-
-                                Map<String, String> thirdlyNodesMap = new LinkedHashMap<>();
-                                NodeList thirdlyNodes = secondaryNode.getChildNodes();
-
-                                /**在添加三级子节点前添加二级子节点的属性*/
-                                if (isSecondaryNodeHasAttr) {
-                                    addAttrMap(thirdlyNodesMap, secondaryNode, secondaryNodeName);
-                                }
-
-                                //循环保存简单节点
-                                for (int k = 0; k < thirdlyNodes.getLength(); k++) {
-                                    Node thirdlyNode = thirdlyNodes.item(k);
-
-                                    if (thirdlyNode != null && thirdlyNode.getNodeType() == Node.ELEMENT_NODE) {
-
-                                        String thirdlyNodeName = thirdlyNode.getNodeName();
-                                        String thirdlyNodeText = thirdlyNode.getTextContent();
-                                        thirdlyNodesMap.put(thirdlyNodeName, thirdlyNodeText);
-                                    }
-                                }
-                                secondaryNodesMap.put(secondaryNodeName, thirdlyNodesMap);
-                            } else { //無三級子節點
-                                //獲取二級節點中的文本內容
-                                String secondaryNodeText = secondaryNode.getTextContent();
-
-                                secondaryNodesMap.put(secondaryNodeName, secondaryNodeText);
-                            }
-
-                        }
-                        primaryNodesMap.put(primaryNodeName, secondaryNodesMap);
-                    }
-
-                } else { //没有子节点
-
-                    String textContent = primaryNode.getTextContent();
-                    primaryNodesMap.put(primaryNodeName, textContent);
-                }
+            if (primaryNode != null
+                    && primaryNode.getNodeType() == Node.ELEMENT_NODE) {
+                recursionAddNodes(primaryNode, primaryNodesMap);
             }
+
             rootMap.put(root.getNodeName(), primaryNodesMap);
         }
+
         return rootMap;
+    }
+
+    /**
+     * 递归方法来操作节点的添加
+     *
+     * @param node     需要的节点
+     * @param nodesMap 节点所在的集合
+     */
+    private static void recursionAddNodes(Node node, Map nodesMap) {
+
+        LinkedHashMap nodeMap = new LinkedHashMap();
+
+        if (node.hasAttributes()) { // 递归方法首先获取节点属性
+            NamedNodeMap attributes = node.getAttributes();
+            Map attrMap = new LinkedHashMap();
+            for (int x = 0; x < attributes.getLength(); x++) {
+                Node item = attributes.item(x);
+                attrMap.put(item.getNodeName(), item.getNodeValue());
+            }
+            nodeMap.put(node.getNodeName() + "_$attrs", attrMap);// 首先放入属性集合
+        }
+
+        // 接着判断有没有子节点
+        if (node.getChildNodes().getLength() > 1) { // 获取子节点
+            NodeList childNodes = node.getChildNodes();
+            LinkedHashMap subNodesMap = new LinkedHashMap();
+            for (int y = 0; y < childNodes.getLength(); y++) {
+                Node subNode = childNodes.item(y); // 轮循获取子节点
+                if (subNode != null
+                        && subNode.getNodeType() == Node.ELEMENT_NODE) {
+
+                    recursionAddNodes(subNode, subNodesMap);
+                }
+
+            }
+            nodeMap.put(node.getNodeName(), subNodesMap);
+        } else { // 没有字节点,只有文本内容
+            String nodeText = node.getTextContent();
+            nodeMap.put(node.getNodeName(), nodeText);
+        }
+
+        nodesMap.put(node.getNodeName(), nodeMap);
     }
 
     /**
@@ -159,147 +140,206 @@ public class XmlParserDom {
      *
      * @param nodesMap 当前节点的子节点集合
      * @param node     当前节点
-     * @param nodeName 当前节点名
      * @version 1.0
-     * @createTime 2015/11/25  10:48
-     * @updateTime 2015/11/25  10:48
+     * @createTime 2015/11/25 10:48
+     * @updateTime 2015/11/25 10:48
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
      */
-    private static void addAttrMap(Map nodesMap, Node node, String nodeName) {
+    private static void addAttrMap(Map nodesMap, Node node) {
 
         Map<String, String> nodeAttrMap = new LinkedHashMap<>();
 
         NamedNodeMap attributes = node.getAttributes();
 
         for (int x = 0; x < attributes.getLength(); x++) {
-            nodeAttrMap.put(attributes.item(x).getNodeName(), attributes.item(x).getTextContent());
+            nodeAttrMap.put(attributes.item(x).getNodeName(), attributes
+                    .item(x).getTextContent());
         }
-        //保存属性,以key中独特的结尾确定
-        nodesMap.put(nodeName + "_$attrs", nodeAttrMap); //map 泛型为<String,Map>
+        // 保存属性,以key中独特的结尾确定
+        nodesMap.put(node.getNodeName() + "_$attrs", nodeAttrMap); // map
+        // 泛型为<String,Map>
     }
 
-
     /**
-     * 将一个装载XML文件信息的Map导出为String,适配根节点下,一级子节点有属性或者为简单节点
-     * 或者带有二级子节点,无属性,为简单节点
+     * 将一个装载XML文件信息的Map导出为String,适配根节点下,一级子节点有属性或者为简单节点 或者带有二级子节点,无属性,为简单节点
      *
-     * @param map 封装了xml数据的map
+     * @param map      封装了xml数据的map
      * @return XML文件中的字符串
      * @version 1.0
-     * @createTime 2015/11/24  11:24
-     * @updateTime 2015/11/24  11:24
+     * @createTime 2015/11/24 11:24
+     * @updateTime 2015/11/24 11:24
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
      */
-    public static String XMLToString(Map map) {
+    public static String XML2String(Map map) {
 
-        //获取用来拼接xml文件的StringBuffer
+        // 获取用来拼接xml文件的StringBuffer
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>"); //文件头
+        stringBuffer.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>"); // 文件头
 
         if (map == null) {
             throw new NullPointerException("传入的数据源为空");
         }
 
         Iterator rootIt = map.entrySet().iterator();
-        //第一轮遍历,获取根节点名称及根节点
+        // 第一轮遍历,获取根节点名称及根节点
         while (rootIt.hasNext()) {
-            Map.Entry rootEntry = (Map.Entry) rootIt.next();
+            Entry rootEntry = (Entry) rootIt.next();
 
             String rootName = (String) rootEntry.getKey();
+
             Map primaryNodesMap = (Map) rootEntry.getValue();
 
-            stringBuffer.append("<" + rootName + ">");
+            stringBuffer.append("<" + rootName);
 
-            Iterator primaryNodesIter = primaryNodesMap.entrySet().iterator();
-            //遍历primaryMap,value为子节点集合
-            while (primaryNodesIter.hasNext()) {
-                Map.Entry primaryEntry = (Map.Entry) primaryNodesIter.next();
+            // 添加属性
+            Iterator attrIter = primaryNodesMap.entrySet().iterator();
+            // 循环用于添加属性
+            while (attrIter.hasNext()) {
+                Entry secEntry = (Entry) attrIter.next();
+                String attrName = (String) secEntry.getKey();
+                Object object = secEntry.getValue();
 
-                String primaryNodeName = (String) primaryEntry.getKey();
+                if (attrName.endsWith("_$attrs")) {
+                    Map nodeAttrMap = (Map) object;
+                    appendAttrsToStringBuffer(stringBuffer, nodeAttrMap);
+                } else {
+                    break;
+                }
+            }
+            stringBuffer.append(">"); // 属性的后半括
 
-                stringBuffer.append("<" + primaryNodeName);
+            // 添加子节点
+            Iterator nodeIter = primaryNodesMap.entrySet().iterator();
+            while (nodeIter.hasNext()) {
+                Entry nodeEntry = (Entry) nodeIter.next();
+                String nodeName = (String) nodeEntry.getKey();
+                if (nodeName.endsWith("_$attrs")) {
+                    continue;
+                } else { // 添加子节点
+                    Object object = nodeEntry.getValue();
 
-                Object object = primaryEntry.getValue();
+                    if (object instanceof Map) { // 该节点有子节点
 
-                //判断值的类型:1.Map 其中是子节点 2.String 其中包含的是当前节点文本
-                if (object instanceof Map) {
-                    Map secondaryMap = (Map) object;
-                    Iterator secondaryIter = secondaryMap.entrySet().iterator();
+                        // 此处用来添加子节点的方法,接收参数stringbuffer,map
+                        recursionAppendString(stringBuffer, nodeName,
+                                (Map) object);
 
-                    while (secondaryIter.hasNext()) { //从map key值的结尾判断该map是否存放属性
-                        Map.Entry secondaryEntry = (Map.Entry) secondaryIter.next();
-                        String secondaryNodeName = (String) secondaryEntry.getKey();
-                        boolean isAttribute = secondaryNodeName.endsWith("_$attrs");
+                    } else { // 该节点是简单节点
+                        stringBuffer.append(">");
+                        String textContent = (String) object;
+                        stringBuffer.append(textContent);
+                    }
+                }
+            }
+            stringBuffer.append("</" + rootName + ">");
+        }
+        return stringBuffer.toString();
+    }
 
-                        if (isAttribute) { //添加属性
-                            appendAttrsToStringBuffer(stringBuffer, (Map) secondaryEntry.getValue());
+    /**
+     * 递归添加stringbuffer
+     *
+     * @param stringBuffer 添加字符串的stringbuffer
+     * @param object       节点集合
+     * @version 1.0
+     * @createTime 2015/11/30 14:54
+     * @updateTime 2015/11/30 14:54
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     */
+    private static void recursionAppendString(StringBuffer stringBuffer,
+                                              String upperNodeName, Map object) {
+
+        Iterator iterator = object.entrySet().iterator();
+        stringBuffer.append("<" + upperNodeName);
+        while (iterator.hasNext()) {
+            Entry entry = (Entry) iterator.next();
+
+            String nodeName = (String) entry.getKey();
+            Object obj = entry.getValue();
+            boolean isAttr = nodeName.endsWith("_$attrs");
+
+            if (isAttr) {
+                Map nodeAttrMap = (Map) obj;
+                appendAttrsToStringBuffer(stringBuffer, nodeAttrMap);
+            } else {
+                if (obj instanceof Map) {
+                    Map valueMap = (Map) obj;
+
+                    // 先添加属性
+                    Iterator attrIter = valueMap.entrySet().iterator();
+                    while (attrIter.hasNext()) {
+                        Entry secEntry = (Entry) attrIter.next();
+                        String key = (String) secEntry.getKey();
+                        if (key.endsWith("_$attrs")) {
+                            appendAttrsToStringBuffer(stringBuffer,
+                                    (Map) secEntry.getValue());
                         } else {
                             break;
                         }
+
                     }
                     stringBuffer.append(">");
 
-                    while (secondaryIter.hasNext()) { //从map key值的结尾判断该map是否存放属性
-                        Map.Entry secondaryEntry = (Map.Entry) secondaryIter.next();
-                        String secondaryNodeName = (String) secondaryEntry.getKey();
-                        boolean isAttribute = secondaryNodeName.endsWith("_$attrs");
-                        if (isAttribute) {
+                    // 在添加子节点
+                    Iterator nodeIter = valueMap.entrySet().iterator();
+                    while (nodeIter.hasNext()) {
+                        Entry secEntry = (Entry) nodeIter.next();
+                        String key = (String) secEntry.getKey();
+                        if (key.endsWith("_$attrs")) {
                             continue;
-                        }
-
-                        Object secondaryEntryValue = secondaryEntry.getValue();
-                        if (secondaryEntryValue instanceof Map) {//二级子节点有子节点有属性
-
-                            System.out.println("二级子节点有子节点");
-
-
                         } else {
-                            //二级节点无子节点
-                            String secondaryNodeText = (String) secondaryEntryValue;
-                            stringBuffer.append("<" + secondaryNodeName + ">" + secondaryNodeText + "</" + secondaryNodeName + ">");
+                            Object secObj = secEntry.getValue();
+
+                            if (secObj instanceof Map) {
+
+                                recursionAppendString(stringBuffer, key,
+                                        (Map) secObj);
+                            } else { // 简单节点
+
+                                String textC = (String) secObj;
+                                stringBuffer.append("<" + key + ">" + textC
+                                        + "</" + key + ">");
+                            }
                         }
                     }
-                } else { //primary节点是基本节点
 
+                } else { // 为简单节点
                     stringBuffer.append(">");
-
-                    String textContent = (String) object;
-                    stringBuffer.append(textContent);
-
+                    String text = (String) obj;
+                    stringBuffer.append(text);
                 }
-                stringBuffer.append("</" + primaryNodeName + ">");
+                stringBuffer.append("</" + nodeName + ">");
             }
-            stringBuffer.append("</" + rootName + ">");
-
         }
-        return stringBuffer.toString();
-
     }
-
 
     /**
      * 将节点集合中的普通节点添加进stringbuffer
      *
      * @param stringBuffer 添加字符串容器
      * @version 1.0
-     * @createTime 2015/11/25  15:40
-     * @updateTime 2015/11/25  15:40
+     * @createTime 2015/11/25 15:40
+     * @updateTime 2015/11/25 15:40
      * @createAuthor 陈思齐
      * @updateAuthor
      * @updateInfo
      */
-    private static void appendNodesToStringBuffer(StringBuffer stringBuffer, Map nodesMap) {
+    private static void appendNodesToStringBuffer(StringBuffer stringBuffer,
+                                                  Map nodesMap) {
 
         Iterator Iter = nodesMap.entrySet().iterator();
         while (Iter.hasNext()) {
-            Map.Entry entry1 = (Map.Entry) Iter.next();
+            Entry entry1 = (Entry) Iter.next();
             String nodeName = (String) entry1.getKey();
             String nodeText = (String) entry1.getValue();
-            stringBuffer.append("<" + nodeName + ">" + nodeText + "</" + nodeName + ">");
+            stringBuffer.append("<" + nodeName + ">" + nodeText + "</"
+                    + nodeName + ">");
         }
     }
 
@@ -309,17 +349,18 @@ public class XmlParserDom {
      * @param stringBuffer 存数据的sb
      * @param nodeAttrMap  保存节点属性的map集合
      * @version 1.0
-     * @createTime 2015/11/25  15:23
-     * @updateTime 2015/11/25  15:23
-     * @createAuthor 陈思齐
+     * @createTime 2015/11/25 15:23
+     * @updateTime 2015/11/25 15:23
+     * @createAuthor Rick
      * @updateAuthor
      * @updateInfo
      */
-    private static void appendAttrsToStringBuffer(StringBuffer stringBuffer, Map nodeAttrMap) {
+    private static void appendAttrsToStringBuffer(StringBuffer stringBuffer,
+                                                  Map nodeAttrMap) {
 
         Iterator attrIter = nodeAttrMap.entrySet().iterator();
         while (attrIter.hasNext()) {
-            Map.Entry attrs = (Map.Entry) attrIter.next();
+            Entry attrs = (Entry) attrIter.next();
             String attrName = (String) attrs.getKey();
             String attrValue = (String) attrs.getValue();
             stringBuffer.append(" " + attrName + "=" + "\"" + attrValue + "\"");
@@ -327,76 +368,89 @@ public class XmlParserDom {
     }
 
     /**
-     * 根据提供的参数返回数据
+     * 根据提供的节点名返回数据
      *
-     * @param requestDataName 请求的数据的名称,限制为根节点下第一级节点
+     * @param requestString 请求的数据的名称,限制为根节点下第一级节点
+     * @param map           解析XML文件产生的Map集合
      * @return 搭载数据的Map
      * @version 1.0
-     * @createTime 2015/11/25  17:41
-     * @updateTime 2015/11/25  17:41
-     * @createAuthor 陈思齐
-     * @updateAuthor
+     * @createTime 2015/11/25 17:41
+     * @updateTime 2015/11/30 11:41
+     * @createAuthor Rick
+     * @updateAuthor Rick
      * @updateInfo
      */
-    public static Map requestData(String requestDataName, Map map) {
+    public static Map requestData(String requestString, Map map) {
 
-        Map resultMap = null;
+        Map resultMap = null; //
+
         if (map == null) {
             return null;
         }
 
-        //迭代查找对应的元素
-        Iterator iterator = map.entrySet().iterator();
-        Object object = null;
-        while (iterator.hasNext()) {
-            //遍历根节点找一级节点
-            Map.Entry entry = (Entry) iterator.next();
-            String key = (String) entry.getKey(); //root
-            if (requestDataName.equalsIgnoreCase(key)) {
-                object = entry.getValue();
+        Iterator iter = map.entrySet().iterator();
+
+        while (iter.hasNext()) {
+            Entry me = (Entry) iter.next();
+            String key = (String) me.getKey();
+
+            if (requestString.equalsIgnoreCase(key)) {
+                resultMap = (Map) me.getValue();
                 break;
             }
-            Map medialMap = (Map) entry.getValue();
+            Object obj = me.getValue();
 
-            Iterator medialIt = medialMap.entrySet().iterator();
-            while (medialIt.hasNext()) {
-                //遍历一级节点找二级节点
-                Map.Entry medialEntry = (Entry) medialIt.next();
-                String request = (String) medialEntry.getKey();
-                if (requestDataName.equalsIgnoreCase(request)) {
-                    object = medialEntry.getValue();
-                    break;
-                }
+            if (obj instanceof Map) {
 
-                //没找到继续找下一层
-                if (medialEntry.getValue() instanceof Map) { //值是Map
-                    Map lastMap = (Map) medialEntry.getValue();
-
-                    Iterator lastIter = lastMap.entrySet().iterator();
-                    while (lastIter.hasNext()) {
-                        Map.Entry lastEntry = (Entry) lastIter.next();
-
-                        String lastKey = (String) lastEntry.getKey();
-                        if (requestDataName.equalsIgnoreCase(lastKey)) {
-                            object = lastEntry.getValue();
-                            break;
-                        }
-                    }
-                } else if (medialEntry.getValue() instanceof String) { //值是String
-                    object = (String) medialEntry.getValue();
-                }
+                Map subMap = (Map) obj;
+                resultMap = recursionFindNode(requestString, subMap);
             }
+
         }
 
-        if (object instanceof Map) {
-            resultMap = (Map) object;
-            return resultMap;
-        } else if (object instanceof String) {
-            resultMap = new HashMap();
-            resultMap.put(requestDataName, (String) object);
+        return resultMap; // 所有元素总集合
+    }
+
+    /**
+     * 通过递归方式查找对应节点的信息
+     *
+     * @param requestString 查找节点的节点名
+     * @param map           节点的值集合
+     * @return 查询结果集合
+     * @version 1.0
+     * @createTime 2015/11/30  16:48
+     * @updateTime 2015/11/30  16:48
+     * @createAuthor 陈思齐
+     * @updateAuthor
+     * @updateInfo
+     */
+    private static Map recursionFindNode(String requestString, Map map) {
+
+        Map resultMap = null;
+        // 迭代查找对应的元素
+        Iterator iterator = map.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+
+            Entry entry = (Entry) iterator.next();
+
+            String key = (String) entry.getKey(); // root
+            if (requestString.equalsIgnoreCase(key)) {
+                resultMap = (Map) entry.getValue();
+                return resultMap;
+            }
+
+            // 执行到此代表 : 查询结束没结果
+
+            Object obj = entry.getValue();
+            if (obj instanceof String) {
+                continue;
+            }
+            // 此处不加判断,会查询到属性集合的键值对中,而属性键值对是<String,String>泛型
+            Map medialMap = (Map) obj;
+            // 递归继续查询
+            resultMap = recursionFindNode(requestString, medialMap);
         }
-        return resultMap; //所有元素总集合
+        return resultMap;
     }
 }
-
-
